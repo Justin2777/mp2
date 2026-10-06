@@ -1,121 +1,125 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import { useEffect, useState } from 'react'
+import { Link, Route, Routes } from 'react-router-dom'
+import Navbar from './components/Navbar'
+import DetailView from './pages/DetailView'
+import GalleryView from './pages/GalleryView'
+import ListView from './pages/ListView'
+import { fetchPokemon } from './services/pokemonApi'
+import type { Pokemon } from './types/Pokemon'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [pokemon, setPokemon] = useState<Pokemon[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+
+    fetchPokemon()
+      .then((data) => {
+        if (!cancelled) {
+          setPokemon(data)
+          setError('')
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(
+            'We could not load Pokémon data. Please check your connection and try again.',
+          )
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [reloadKey])
+
+  function handleRetry() {
+    setLoading(true)
+    setError('')
+    setReloadKey((current) => current + 1)
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app">
+      <Navbar pokemonCount={pokemon.length} />
 
-      <div className="ticks"></div>
+      <main className="main-content">
+        {loading ? (
+          <div className="status-card">
+            <div className="loading-spinner" />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+            <h1>Loading Pokémon...</h1>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+            <p>Fetching data from PokéAPI.</p>
+          </div>
+        ) : error ? (
+          <div className="status-card error-card">
+            <h1>Something went wrong</h1>
+
+            <p>{error}</p>
+
+            <button
+              type="button"
+              onClick={handleRetry}
+            >
+              Try again
+            </button>
+          </div>
+        ) : (
+          <Routes>
+            <Route
+              path="/"
+              element={<ListView pokemon={pokemon} />}
+            />
+
+            <Route
+              path="/gallery"
+              element={<GalleryView pokemon={pokemon} />}
+            />
+
+            <Route
+              path="/pokemon/:id"
+              element={<DetailView pokemon={pokemon} />}
+            />
+
+            <Route
+              path="*"
+              element={
+                <section className="page">
+                  <div className="not-found-card">
+                    <p className="eyebrow">404</p>
+
+                    <h1>Page not found</h1>
+
+                    <p>
+                      The page you requested does not exist.
+                    </p>
+
+                    <Link to="/" className="primary-button">
+                      Return home
+                    </Link>
+                  </div>
+                </section>
+              }
+            />
+          </Routes>
+        )}
+      </main>
+
+      <footer className="site-footer">
+        <p>Pokémon data provided by PokéAPI.</p>
+        <p>CS 409 · MP2 Front-end App</p>
+      </footer>
+    </div>
   )
 }
 
